@@ -40,7 +40,7 @@ function configFromLevel(level: Level) {
 }
 
 export default function App() {
-  const TIME_SCALE = DEBUG ? 1 : 1;
+  const TIME_SCALE = DEBUG ? 0.2 : 1;
 
   // ---------- STATE ----------
   const [phase, setPhase] = useState<Phase>('idle');
@@ -269,7 +269,8 @@ export default function App() {
               marginBottom: 32,
             }}
           >
-            A guided plank workout that keeps you focused, on pace and in form.
+            Stay focused through a full plank routine, timed and structured for
+            you.
           </p>
           <button className='start-button' onClick={goToConfig}>
             Set up workout
@@ -369,13 +370,14 @@ export default function App() {
                 phase === 'exercise' ? 'active' : ''
               }`}
             >
+              <h4 style={{ margin: '0' }}>Hold steady</h4>
               <h2 style={{ marginTop: '0' }}>{currentExercise.name}</h2>
             </div>
             {/* BREAK */}
             <div
               className={`phase-content ${phase === 'break' ? 'active' : ''}`}
             >
-              <h4 style={{ margin: '0' }}>Up next</h4>
+              <h4 style={{ margin: '0' }}>Up next:</h4>
               <h2 style={{ marginTop: '0' }}>
                 {WORKOUT[currentIndex + 1]?.name}
               </h2>

@@ -45,6 +45,7 @@ body {
   }
 
   &.workout-active {
+    //animation: shine 2s ease-in-out infinite;
     .exercise-image-wrapper img {
       animation: pulse-active 3s ease-in-out infinite;
     }
@@ -80,10 +81,13 @@ h4 {
   opacity: 0;
   transform: translateY(4px);
   pointer-events: none;
-
+  /*transition: all 0.3s;*/
   &.active {
     opacity: 1;
     transform: translateY(0);
+  }
+  .workout-active & h4 {
+    animation: blink 1s ease-in-out infinite;
   }
 }
 
@@ -208,6 +212,17 @@ button {
   }
 }
 
+@keyframes shine {
+  0% {
+    background: @bg-app;
+  }
+  50% {
+    background: lighten(@bg-app, 3%);
+  }
+  100% {
+    background: @bg-app;
+  }
+}
 @keyframes pulse-active {
   0% {
     filter: brightness(100%);
@@ -237,10 +252,24 @@ button {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1.1);
   }
   100% {
     transform: scale(1);
+  }
+}
+@keyframes blink {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.025);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
   }
 }
 
