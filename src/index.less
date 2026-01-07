@@ -63,12 +63,12 @@ p {
     transition: filter 0.5s;
   }
 
-  &.workout-active {
-    //animation: shine 2s ease-in-out infinite;
+  /*&.workout-active {
+    animation: shine 2s ease-in-out infinite;
     .exercise-image-wrapper img {
       animation: pulse-active 3s ease-in-out infinite;
     }
-  }
+  }*/
 
   &.workout-inactive {
     .exercise-image-wrapper {
@@ -82,6 +82,8 @@ p {
   overflow: hidden;
   display: flex;
   justify-content: center;
+  position: relative;
+  background: white;
 }
 .exercise-image {
   width: 100%;
@@ -90,6 +92,7 @@ p {
   transform: scale(1.1);
 
   &.mirrored {
+    animation: fadeIn 0.5s ease-out forwards;
     transform: scaleX(-1) scale(1.1);
   }
 }
@@ -294,6 +297,45 @@ button {
   }
 }
 
+.switch-cue {
+  position: absolute;
+  padding: 0.5em;
+  inset: auto 0 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font-size: 2rem;
+  font-weight: 500;
+  background-color: rgba(@btn-bg, 0.75);
+  color: @text-primary;
+  opacity: 0; // HIDDEN BY DEFAULT
+  transition: all 0.5s;
+  backdrop-filter: blur(2px);
+  label {
+    z-index: 2;
+  }
+  &.visible {
+    opacity: 1;
+    .switch-cue-fill {
+      animation: switchFill 5s linear forwards;
+    }
+  }
+}
+
+.switch-cue-fill {
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  background: @btn-bg;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+@keyframes switchFill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
 .progress-dots {
   display: flex;
   justify-content: center;
@@ -431,10 +473,6 @@ button {
     list-style-type: '- ';
     line-height: 1.3em;
   }
-
-  /*li {
-    margin-bottom: 6px;
-  }*/
 }
 
 @keyframes shine {
@@ -448,7 +486,7 @@ button {
     background: @bg-app;
   }
 }
-@keyframes pulse-active {
+/*@keyframes pulse-active {
   0% {
     filter: brightness(100%);
   }
@@ -458,8 +496,7 @@ button {
   100% {
     filter: brightness(100%);
   }
-}
-
+}*/
 @keyframes pulse-pause {
   0% {
     opacity: 1;
@@ -504,5 +541,27 @@ button {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+@keyframes flashingCue {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }

@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react';
 import { WORKOUT } from './data/workout';
+import { ExerciseGuide } from './components/ExerciseGuide';
+import { computeSessionSummary } from './services/sessionSummary';
+import { SessionSummary } from './components/SessionSummary';
+import { usePreferences } from './hooks/usePreferences';
+import { useSessionRecorder } from './hooks/useSessionRecorder';
+import { useRef } from 'react';
+import { playSound, vibrate } from './services/feedback';
+import {
+  type Level,
+  configFromLevel,
+  type WorkoutConfig,
+} from './domain/workoutConfig';
+import { IdleScreen } from './components/screens/IdleScreen';
+import { ConfigScreen } from './components/screens/ConfigScreen';
+import { WorkoutScreen } from './components/screens/WorkoutScreen';
 
 const DEBUG = import.meta.env.DEV;
 
@@ -11,56 +26,30 @@ type Phase =
   | 'break'
   | 'finished';
 
-type WorkoutConfig = {
-  exerciseDuration: number;
-  shortBreak: number;
-  longBreak: number;
-};
-type Level = 0 | 1 | 2 | 3 | 4;
-
-const LEVEL_LABELS = [
-  'Beginner',
-  'Novice',
-  'Intermediate',
-  'Advanced',
-  'Expert',
-] as const;
-
-// Harder (right) => longer work, shorter rest
-const EXERCISE_BY_LEVEL = [35, 40, 45, 60, 70] as const;
-const SHORT_BREAK_BY_LEVEL = [20, 18, 15, 12, 10] as const;
-const LONG_BREAK_BY_LEVEL = [70, 65, 60, 50, 45] as const;
-
-function configFromLevel(level: Level) {
-  return {
-    exerciseDuration: EXERCISE_BY_LEVEL[level],
-    shortBreak: SHORT_BREAK_BY_LEVEL[level],
-    longBreak: LONG_BREAK_BY_LEVEL[level],
-  };
-}
-
 export default function App() {
-  const TIME_SCALE = DEBUG ? 1 : 1;
+  const TIME_SCALE = DEBUG ? 0.8 : 1;
 
   // ---------- STATE ----------
   const [phase, setPhase] = useState<Phase>('idle');
   const [isPaused, setIsPaused] = useState(false);
+
+  const [showSwitchCue, setShowSwitchCue] = useState(false);
+  const switchedIndexRef = useRef<number | null>(null);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(5);
   const [confirmAbort, setConfirmAbort] = useState(false);
   const [level, setLevel] = useState<Level>(2); // 2 = Intermediate default
   const [config, setConfig] = useState<WorkoutConfig>(() => configFromLevel(1));
   const [showGuide, setShowGuide] = useState(false);
+  const { preferences } = usePreferences();
+  const recorder = useSessionRecorder();
+  const [summary, setSummary] = useState<ReturnType<
+    typeof computeSessionSummary
+  > | null>(null);
+
   // ---------- DERIVED ----------
   const currentExercise = WORKOUT[currentIndex];
-
-  const displayExercise =
-    phase === 'countdown'
-      ? WORKOUT[0]
-      : phase === 'break'
-      ? WORKOUT[currentIndex + 1]
-      : currentExercise;
-
   const isPhaseTransition =
     timeLeft ===
     Math.ceil(
@@ -75,13 +64,22 @@ export default function App() {
     phase === 'exercise' &&
     timeLeft <= Math.ceil((config.exerciseDuration * TIME_SCALE) / 2);
 
+  const SWITCH_WARNING_SECONDS = 5;
+
+  const totalExerciseTime = Math.ceil(config.exerciseDuration * TIME_SCALE);
+  const halfwayTime = Math.ceil(totalExerciseTime / 2);
+
+  const isSwitchImminent =
+    phase === 'exercise' &&
+    currentExercise.canMirror &&
+    timeLeft <= halfwayTime + SWITCH_WARNING_SECONDS &&
+    timeLeft > halfwayTime;
+
   const isEnding = phase === 'exercise' && timeLeft > 0 && timeLeft <= 5;
   const radius = 60;
   const stroke = 4;
   const normalizedRadius = radius - stroke * 2;
   const circumference = normalizedRadius * 2 * Math.PI;
-
-  const totalExerciseTime = Math.ceil(config.exerciseDuration * TIME_SCALE);
 
   const totalTime =
     phase === 'exercise'
@@ -105,23 +103,16 @@ export default function App() {
     vibrate(40);
   }, [timeLeft, isEnding, isPaused]);
 
+  useEffect(() => {
+    switchedIndexRef.current = null;
+  }, [currentIndex, phase]);
+
   // ---------- HELPERS ----------
   function getBreakDuration(index: number) {
     return index === 4 ? config.longBreak : config.shortBreak;
   }
-  // ---------- SOUNDS & VIBRATION ----------
-  const [prevPhase, setPrevPhase] = useState<Phase | null>(null);
 
-  function playSound(name: 'play' | 'pause' | 'success') {
-    const audio = new Audio(`/sounds/${name}.mp3`);
-    audio.volume = 0.6;
-    audio.play().catch(() => {});
-  }
-  function vibrate(pattern: number | number[]) {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(pattern);
-    }
-  }
+  const [prevPhase, setPrevPhase] = useState<Phase | null>(null);
 
   useEffect(() => {
     if (prevPhase === null) {
@@ -129,7 +120,7 @@ export default function App() {
       return;
     }
 
-    // Countdown → Exercise
+    // Countdown - Exercise
     if (prevPhase === 'countdown' && phase === 'exercise') {
       playSound('play');
       vibrate(100);
@@ -165,15 +156,19 @@ export default function App() {
   useEffect(() => {
     if (timeLeft !== 0 || isPaused) return;
 
-    // Countdown → Exercise
+    // Countdown - Exercise
     if (phase === 'countdown') {
+      switchedIndexRef.current = null;
       setPhase('exercise');
       setTimeLeft(Math.ceil(config.exerciseDuration * TIME_SCALE));
+      recorder.startSegment(currentExercise.canMirror ? 'left' : 'front');
       return;
     }
 
-    // Exercise → Break or Finish
+    // Exercise - Break or Finish
     if (phase === 'exercise') {
+      recorder.endSegment();
+
       if (currentIndex === WORKOUT.length - 1) {
         setPhase('finished');
         return;
@@ -184,13 +179,48 @@ export default function App() {
       return;
     }
 
-    // Break → Next Exercise
+    // Break - Next Exercise
     if (phase === 'break') {
       setCurrentIndex((i) => i + 1);
       setPhase('exercise');
       setTimeLeft(Math.ceil(config.exerciseDuration * TIME_SCALE));
+      recorder.startSegment(currentExercise.canMirror ? 'left' : 'front');
     }
   }, [timeLeft, phase, currentIndex, isPaused, config.exerciseDuration]);
+
+  // HALF-WAY SWITCH
+  useEffect(() => {
+    if (phase !== 'exercise') return;
+    if (!currentExercise.canMirror) return;
+    if (!isPastHalfway) return;
+
+    // guard: only once per exercise
+    if (switchedIndexRef.current === currentIndex) return;
+
+    vibrate([150, 100, 150]);
+    recorder.endSegment();
+    recorder.startSegment('right');
+
+    switchedIndexRef.current = currentIndex;
+  }, [phase, isPastHalfway, currentIndex, currentExercise]);
+
+  useEffect(() => {
+    setShowSwitchCue(!!isSwitchImminent);
+  }, [isSwitchImminent]);
+
+  useEffect(() => {
+    if (phase !== 'finished') return;
+
+    const session = recorder.endSession();
+
+    if (!session) {
+      console.warn('No session recorded');
+      return;
+    }
+
+    const result = computeSessionSummary(session, preferences);
+    setSummary(result);
+  }, [phase]);
 
   // ---------- ACTIONS ----------
   function goToConfig() {
@@ -198,6 +228,7 @@ export default function App() {
   }
 
   function beginWorkout() {
+    recorder.startSession();
     setCurrentIndex(0);
     setTimeLeft(10 * TIME_SCALE);
     setIsPaused(false);
@@ -288,359 +319,51 @@ export default function App() {
         </div>
       )}
       {/* ---------- IDLE ---------- */}
-      {phase === 'idle' && (
-        <>
-          <h1 style={{ marginTop: '0', marginBottom: '0' }}>
-            <span className='material-symbols-rounded logo'>hourglass</span>
-            <br />
-            PlankFlow
-          </h1>
-
-          <p
-            style={{
-              maxWidth: 320,
-              marginTop: 12,
-              marginBottom: 32,
-            }}
-          >
-            Stay focused through a full plank routine, timed and structured for
-            you.
-          </p>
-          <button className='start-button' onClick={goToConfig}>
-            Set up workout
-          </button>
-        </>
-      )}
+      {phase === 'idle' && <IdleScreen onStart={goToConfig} />}
 
       {/* ---------- CONFIG ---------- */}
       {phase === 'config' && (
-        <div style={{ maxWidth: 400, width: '90%' }}>
-          <h2 style={{ margin: 0 }}>Workout Settings</h2>
-
-          <p style={{ letterSpacing: '-0.025em' }}>
-            Choose a difficulty level and get ready to move.
-            <br />
-            You’ll rest briefly between exercises, with a longer break halfway
-            through the workout.
-          </p>
-
-          <div style={{ marginBottom: 32, marginTop: 32 }}>
-            <label style={{ display: 'block', marginBottom: 8 }}>
-              Difficulty: <strong>{LEVEL_LABELS[level]}</strong>
-            </label>
-
-            <input
-              style={{ width: '66%', maxWidth: 320 }}
-              type='range'
-              min={0}
-              max={4}
-              step={1}
-              value={level}
-              onChange={(e) => setLevel(Number(e.target.value) as Level)}
-            />
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 12,
-                opacity: 0.6,
-                marginTop: 4,
-                padding: '0 8px',
-              }}
-            ></div>
-            <p style={{ margin: '0.5rem' }}>
-              Plank hold: <strong>{config.exerciseDuration}s</strong>
-            </p>
-            <p style={{ margin: '0.5rem' }}>
-              Short rest: <strong>{config.shortBreak}s</strong>
-            </p>
-            <p style={{ margin: '0.5rem' }}>
-              Long rest: <strong>{config.longBreak}s</strong>
-            </p>
-          </div>
-          <div></div>
-          <div>
-            <button
-              className='start-button'
-              onClick={beginWorkout}
-              style={{ marginTop: 0, marginBottom: 16 }}
-            >
-              Begin workout
-            </button>
-          </div>
-
-          <button
-            type='button'
-            onClick={() => setPhase('idle')}
-            style={{
-              marginRight: 16,
-            }}
-          >
-            <span
-              className='material-symbols-rounded'
-              style={{ marginRight: 6, fontSize: '1.5em' }}
-            >
-              arrow_back
-            </span>
-            Back
-          </button>
-          <button
-            type='button'
-            onClick={() => {
-              console.log('Guide clicked');
-              setShowGuide(true);
-            }}
-          >
-            <span
-              className='material-symbols-rounded'
-              style={{ marginRight: 6, fontSize: '1.5em' }}
-            >
-              book_5
-            </span>
-            Guide
-          </button>
-        </div>
+        <ConfigScreen
+          level={level}
+          config={config}
+          onLevelChange={setLevel}
+          onBegin={beginWorkout}
+          onBack={() => setPhase('idle')}
+          onGuide={() => setShowGuide(true)}
+        />
       )}
 
       {/* ---------- WORKOUT ---------- */}
       {(phase === 'countdown' || phase === 'exercise' || phase === 'break') && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            width: '100%',
-            maxWidth: 400,
-          }}
-        >
-          <div className='phase-header'>
-            {/* COUNTDOWN */}
-            <div
-              className={`phase-content ${
-                phase === 'countdown' ? 'active' : ''
-              }`}
-            >
-              <h1 style={{ margin: '0' }}>Get into position</h1>
-              <h3 style={{ marginTop: '0' }}>{currentExercise.name}</h3>
-            </div>
-            {/* EXERCISE */}
-            <div
-              className={`phase-content ${
-                phase === 'exercise' ? 'active' : ''
-              }`}
-            >
-              <h1 style={{ margin: '0' }}>Hold steady</h1>
-              <h3 style={{ marginTop: '0' }}>{currentExercise.name}</h3>
-            </div>
-            {/* BREAK */}
-            <div
-              className={`phase-content ${phase === 'break' ? 'active' : ''}`}
-            >
-              <h1 style={{ margin: '0' }}>Rest</h1>
-              <h3 style={{ marginTop: '0' }}>
-                Up next: {WORKOUT[currentIndex + 1]?.name}
-              </h3>
-            </div>
-          </div>
-
-          <div className='progress-dots' aria-hidden='true'>
-            {WORKOUT.map((_, i) => (
-              <span
-                key={i}
-                className={
-                  i === currentIndex
-                    ? 'dot active'
-                    : i < currentIndex
-                    ? 'dot done'
-                    : 'dot'
-                }
-              />
-            ))}
-          </div>
-
-          {displayExercise?.image && (
-            <div className='exercise-image-wrapper'>
-              <img
-                src={displayExercise.image}
-                alt={displayExercise.name}
-                className={`exercise-image ${
-                  displayExercise.canMirror && isPastHalfway ? 'mirrored' : ''
-                }`}
-              />
-            </div>
-          )}
-
-          <p
-            className={`timer ${isPaused ? 'paused' : ''} ${
-              isEnding ? 'ending' : ''
-            }`}
-            style={{ fontSize: 48, margin: '16px 0' }}
-            aria-live='polite'
-          >
-            {timeLeft}s
-          </p>
-
-          <div className='controlPanel'>
-            <button
-              onClick={previous}
-              disabled={currentIndex === 0}
-              style={{ marginRight: 6 }}
-            >
-              <span
-                className='material-symbols-rounded'
-                style={{ marginRight: 6 }}
-              >
-                skip_previous
-              </span>
-              Back
-            </button>
-
-            <div className='pause-ring'>
-              {(phase === 'countdown' ||
-                phase === 'exercise' ||
-                phase === 'break') && (
-                <svg
-                  width={radius * 2}
-                  height={radius * 2}
-                  viewBox={`0 0 ${radius * 2} ${radius * 2}`}
-                  className={`progress-ring ${
-                    phase === 'break' || phase === 'countdown' ? 'is-rest' : ''
-                  } ${isPaused ? 'is-paused' : ''} ${
-                    isPhaseTransition ? 'no-transition' : ''
-                  }
-      `}
-                >
-                  <circle
-                    fill='transparent'
-                    strokeWidth={stroke}
-                    strokeDasharray={`${circumference} ${circumference}`}
-                    strokeDashoffset={circumference * (1 - progress)}
-                    r={normalizedRadius}
-                    cx={radius}
-                    cy={radius}
-                  />
-                </svg>
-              )}
-
-              <button
-                onClick={togglePause}
-                className={`pause-button ${isPaused ? 'is-resume' : ''}`}
-                aria-label={isPaused ? 'Resume workout' : 'Pause workout'}
-              >
-                <span className='material-symbols-rounded' aria-hidden='true'>
-                  {isPaused ? 'play_arrow' : 'pause'}
-                </span>
-              </button>
-            </div>
-
-            <button
-              onClick={next}
-              disabled={currentIndex === WORKOUT.length - 1}
-              style={{ marginLeft: 6 }}
-            >
-              Skip{' '}
-              <span
-                className='material-symbols-rounded'
-                style={{ marginLeft: 6 }}
-              >
-                skip_next
-              </span>
-            </button>
-          </div>
-          {/* END BUTTON + RENDER CANCEL BACKDROP */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              abortWorkout();
-            }}
-            className='abort-button'
-            style={{ marginTop: 15 }}
-          >
-            {confirmAbort ? 'Tap again to confirm' : 'End workout'}
-          </button>
-          {confirmAbort && (
-            <button
-              type='button'
-              className='abort-backdrop'
-              onClick={cancelAbortConfirm}
-              aria-label='Cancel end workout confirmation'
-            />
-          )}
-        </div>
+        <WorkoutScreen
+          phase={phase}
+          currentIndex={currentIndex}
+          timeLeft={timeLeft}
+          isPaused={isPaused}
+          progress={progress}
+          isEnding={isEnding}
+          isPastHalfway={isPastHalfway}
+          isPhaseTransition={isPhaseTransition}
+          radius={radius}
+          stroke={stroke}
+          circumference={circumference}
+          normalizedRadius={normalizedRadius}
+          onPrevious={previous}
+          onTogglePause={togglePause}
+          onNext={next}
+          onAbort={abortWorkout}
+          confirmAbort={confirmAbort}
+          onCancelAbort={cancelAbortConfirm}
+          showSwitchCue={showSwitchCue}
+        />
       )}
 
       {/* ---------- FINISHED ---------- */}
-      {phase === 'finished' && (
-        <>
-          <h1>
-            Workout complete!
-            <br />{' '}
-            <span
-              className='material-symbols-rounded'
-              style={{ fontSize: '1.5em' }}
-            >
-              trophy
-            </span>
-          </h1>
-          <button className='start-button' onClick={goToConfig}>
-            Restart
-          </button>
-        </>
+      {phase === 'finished' && summary && (
+        <SessionSummary {...summary} onRestart={goToConfig} />
       )}
 
       {showGuide && <ExerciseGuide onClose={() => setShowGuide(false)} />}
     </main>
-  );
-}
-
-type ExerciseGuideProps = {
-  onClose: () => void;
-};
-
-function ExerciseGuide({ onClose }: ExerciseGuideProps) {
-  return (
-    <div className='guide-backdrop' onClick={onClose}>
-      <div
-        className='guide-modal'
-        onClick={(e) => e.stopPropagation()}
-        role='dialog'
-        aria-modal='true'
-      >
-        <header className='guide-header'>
-          <h2>Exercise guide</h2>
-          <button
-            type='button'
-            className='text-button'
-            onClick={onClose}
-            aria-label='Close exercise guide'
-          >
-            <span className='material-symbols-rounded'>close</span>
-          </button>
-        </header>
-
-        <div className='guide-content'>
-          <p className='guide-intro'>
-            Each exercise focuses on form and control. Follow the cues below to
-            maintain a safe, effective position.
-          </p>
-          {WORKOUT.map((ex) => (
-            <section key={ex.name} className='guide-exercise'>
-              <div className='guide-image-wrapper'>
-                <img src={ex.image} alt={ex.name} />
-              </div>
-              <h3>{ex.name}</h3>
-              <ul>
-                {(ex.description ?? []).map((line, i) => (
-                  <li key={i}>{line}</li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
