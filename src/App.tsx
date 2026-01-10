@@ -32,10 +32,8 @@ export default function App() {
   // ---------- STATE ----------
   const [phase, setPhase] = useState<Phase>('idle');
   const [isPaused, setIsPaused] = useState(false);
-
   const [showSwitchCue, setShowSwitchCue] = useState(false);
   const switchedIndexRef = useRef<number | null>(null);
-
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(5);
   const [confirmAbort, setConfirmAbort] = useState(false);
@@ -65,10 +63,8 @@ export default function App() {
     timeLeft <= Math.ceil((config.exerciseDuration * TIME_SCALE) / 2);
 
   const SWITCH_WARNING_SECONDS = 5;
-
   const totalExerciseTime = Math.ceil(config.exerciseDuration * TIME_SCALE);
   const halfwayTime = Math.ceil(totalExerciseTime / 2);
-
   const isSwitchImminent =
     phase === 'exercise' &&
     currentExercise.canMirror &&
@@ -80,37 +76,50 @@ export default function App() {
   const stroke = 4;
   const normalizedRadius = radius - stroke * 2;
   const circumference = normalizedRadius * 2 * Math.PI;
-
   const totalTime =
     phase === 'exercise'
       ? totalExerciseTime
       : phase === 'break'
       ? Math.ceil(getBreakDuration(currentIndex) * TIME_SCALE)
       : Math.ceil(10 * TIME_SCALE);
-
   const progress =
     phase === 'countdown' || phase === 'exercise' || phase === 'break'
       ? Math.min(1, Math.max(0, 1 - timeLeft / totalTime))
       : 1;
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
-  const [isWorkoutMenuOpen, setIsWorkoutMenuOpen] = useState(false);
+  type SettingsView = 'menu' | 'guide' | 'sound' | 'appearance';
 
-  const [workoutMenuView, setWorkoutMenuView] = useState<'menu' | 'guide'>(
-    'menu'
-  );
+  const [settingsMenuView, setSettingsMenuView] =
+    useState<SettingsView>('menu');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [vibrationEnabled, setVibrationEnabled] = useState(true);
 
   // ------- Pause workout when menu opens ------- */
   useEffect(() => {
-    if (isWorkoutMenuOpen) {
+    if (isSettingsMenuOpen) {
       setIsPaused(true);
     }
-  }, [isWorkoutMenuOpen]);
+  }, [isSettingsMenuOpen]);
+  // ------- Playback for sound/vibration settings turned ON  ------- */
+  useEffect(() => {
+    if (soundEnabled) {
+      playSound('play');
+    }
+  }, [soundEnabled]);
+  useEffect(() => {
+    if (vibrationEnabled) {
+      vibrate(30);
+    }
+  }, [vibrationEnabled]);
+
   // ------- Open workout menu ------- */
   useEffect(() => {
-    if (isWorkoutMenuOpen) {
-      setWorkoutMenuView('menu');
+    if (isSettingsMenuOpen) {
+      setSettingsMenuView('menu');
     }
-  }, [isWorkoutMenuOpen]);
+  }, [isSettingsMenuOpen]);
 
   useEffect(() => {
     setConfig(configFromLevel(level));
@@ -118,8 +127,9 @@ export default function App() {
 
   useEffect(() => {
     if (!isEnding || isPaused) return;
-
-    vibrate(40);
+    if (vibrationEnabled) {
+      vibrate(40);
+    }
   }, [timeLeft, isEnding, isPaused]);
 
   useEffect(() => {
@@ -141,14 +151,22 @@ export default function App() {
 
     // Countdown - Exercise
     if (prevPhase === 'countdown' && phase === 'exercise') {
-      playSound('play');
-      vibrate(100);
+      if (soundEnabled) {
+        playSound('play');
+      }
+      if (vibrationEnabled) {
+        vibrate(100);
+      }
     }
 
     // Workout finished
     if (phase === 'finished') {
-      playSound('success');
-      vibrate([100, 50, 100]);
+      if (soundEnabled) {
+        playSound('play');
+      }
+      if (vibrationEnabled) {
+        vibrate([100, 50, 100]);
+      }
     }
 
     setPrevPhase(phase);
@@ -216,7 +234,9 @@ export default function App() {
     // guard: only once per exercise
     if (switchedIndexRef.current === currentIndex) return;
 
-    vibrate([150, 100, 150]);
+    if (vibrationEnabled) {
+      vibrate([150, 100, 150]);
+    }
     recorder.endSegment();
     recorder.startSegment('right');
 
@@ -258,8 +278,12 @@ export default function App() {
   function togglePause() {
     setIsPaused((p) => {
       const next = !p;
-      playSound(next ? 'pause' : 'play');
-      vibrate(next ? 50 : 30);
+      if (soundEnabled) {
+        playSound(next ? 'pause' : 'play');
+      }
+      if (vibrationEnabled) {
+        vibrate(next ? 50 : 30);
+      }
       return next;
     });
     setConfirmAbort(false);
@@ -302,7 +326,7 @@ export default function App() {
   // ---------- RENDER ----------
   return (
     <main
-      className={`workout-container ${
+      className={`workout-container theme-${theme} ${
         phase === 'exercise'
           ? 'workout-active'
           : phase === 'break' || phase === 'countdown'
@@ -338,26 +362,40 @@ export default function App() {
         </div>
       )}
       {/* ---------- MENU OVERLAY ---------- */}
-      {isWorkoutMenuOpen && (
-        <div className='workout-menu-overlay'>
-          {workoutMenuView === 'menu' && (
-            <ul className='workout-menu-list'>
+      {isSettingsMenuOpen && (
+        <div className='settings-menu-overlay'>
+          {settingsMenuView === 'menu' && (
+            <ul className='settings-menu-list'>
+              {/* NO GUIDE ON CONFIG PHASE - Redundant because of Guide button */}
+              {phase !== 'config' && (
+                <li>
+                  <button
+                    type='button'
+                    onClick={() => setSettingsMenuView('guide')}
+                  >
+                    Exercise guide
+                  </button>
+                </li>
+              )}
               <li>
                 <button
                   type='button'
-                  onClick={() => setWorkoutMenuView('guide')}
+                  onClick={() => setSettingsMenuView('sound')}
                 >
-                  Exercise guide
-                </button>
-              </li>
-              <li>
-                <button type='button' disabled>
                   Sound & vibration
                 </button>
               </li>
               <li>
+                <button
+                  type='button'
+                  onClick={() => setSettingsMenuView('appearance')}
+                >
+                  Appearance
+                </button>
+              </li>
+              <li>
                 <button type='button' disabled>
-                  Measurements
+                  Body metrics
                 </button>
               </li>
               <li>
@@ -365,30 +403,35 @@ export default function App() {
                   Support
                 </button>
               </li>
+              <li>
+                <button type='button' disabled>
+                  Share this app
+                </button>
+              </li>
             </ul>
           )}
-          <div className='workout-menu-content'>
+          <div className='settings-menu-content'>
             <button
               type='button'
               className='text-button close'
-              onClick={() => setIsWorkoutMenuOpen(false)}
+              onClick={() => setIsSettingsMenuOpen(false)}
               aria-label='Close menu'
             >
               <span className='material-symbols-rounded'>close</span>
             </button>
 
-            {workoutMenuView === 'guide' && (
+            {settingsMenuView === 'guide' && (
               <>
                 <button
                   type='button'
                   className='text-button back'
-                  onClick={() => setWorkoutMenuView('menu')}
+                  onClick={() => setSettingsMenuView('menu')}
                 >
                   <span className='material-symbols-rounded'>arrow_back</span>
                 </button>
 
-                <div className='workout-menu-item'>
-                  <div className='workout-menu-image-wrapper'>
+                <div className='settings-menu-item'>
+                  <div className='settings-menu-image-wrapper'>
                     <img
                       src={currentExercise.image}
                       alt={currentExercise.name}
@@ -400,6 +443,94 @@ export default function App() {
                       <li key={i}>{line}</li>
                     ))}
                   </ul>
+                </div>
+              </>
+            )}
+
+            {settingsMenuView === 'sound' && (
+              <>
+                <button
+                  type='button'
+                  className='text-button back'
+                  onClick={() => setSettingsMenuView('menu')}
+                >
+                  <span className='material-symbols-rounded'>arrow_back</span>
+                </button>
+                <div className='settings-menu-item'>
+                  <h3>Sound & vibration</h3>
+
+                  <div className='settings-toggle'>
+                    <label>Enable sound cues</label>
+                    <button
+                      type='button'
+                      className={`toggle ${soundEnabled ? 'on' : ''}`}
+                      onClick={() => setSoundEnabled((v) => !v)}
+                      aria-pressed={soundEnabled}
+                    >
+                      <span className='toggle-thumb' />
+                    </button>
+                  </div>
+
+                  <div className='settings-toggle'>
+                    <label>Enable vibration cues</label>
+                    <button
+                      type='button'
+                      className={`toggle ${vibrationEnabled ? 'on' : ''}`}
+                      onClick={() => setVibrationEnabled((v) => !v)}
+                      aria-pressed={vibrationEnabled}
+                    >
+                      <span className='toggle-thumb' />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {settingsMenuView === 'appearance' && (
+              <>
+                <button
+                  type='button'
+                  className='text-button back'
+                  onClick={() => setSettingsMenuView('menu')}
+                >
+                  <span className='material-symbols-rounded'>arrow_back</span>
+                </button>
+
+                <div className='settings-menu-item'>
+                  <h3>Appearance</h3>
+
+                  <div className='settings-toggle'>
+                    <span
+                      className={`theme-label ${
+                        theme === 'dark' ? 'active' : ''
+                      }`}
+                    >
+                      Dark theme
+                    </span>
+
+                    <button
+                      type='button'
+                      className={`theme-toggle ${theme}`}
+                      onClick={() =>
+                        setTheme(theme === 'dark' ? 'light' : 'dark')
+                      }
+                      aria-label='Toggle theme'
+                    >
+                      <span className='theme-toggle-thumb'>
+                        <span className='material-symbols-rounded'>
+                          {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+                        </span>
+                      </span>
+                    </button>
+
+                    <span
+                      className={`theme-label ${
+                        theme === 'light' ? 'active' : ''
+                      }`}
+                    >
+                      Light theme
+                    </span>
+                  </div>
                 </div>
               </>
             )}
@@ -419,6 +550,7 @@ export default function App() {
           onBegin={beginWorkout}
           onBack={() => setPhase('idle')}
           onGuide={() => setShowGuide(true)}
+          onOpenSettings={() => setIsSettingsMenuOpen(true)}
         />
       )}
 
@@ -433,7 +565,7 @@ export default function App() {
           isEnding={isEnding}
           isPastHalfway={isPastHalfway}
           isPhaseTransition={isPhaseTransition}
-          setIsWorkoutMenuOpen={setIsWorkoutMenuOpen}
+          setIsSettingsMenuOpen={setIsSettingsMenuOpen}
           radius={radius}
           stroke={stroke}
           circumference={circumference}

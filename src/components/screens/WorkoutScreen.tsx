@@ -9,7 +9,7 @@ type Props = {
   isEnding: boolean;
   isPastHalfway: boolean;
   isPhaseTransition: boolean;
-  setIsWorkoutMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsSettingsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   radius: number;
   stroke: number;
   circumference: number;
@@ -32,7 +32,7 @@ export function WorkoutScreen({
   isEnding,
   isPastHalfway,
   isPhaseTransition,
-  setIsWorkoutMenuOpen,
+  setIsSettingsMenuOpen,
   showSwitchCue,
   radius,
   stroke,
@@ -67,9 +67,9 @@ export function WorkoutScreen({
       }}
     >
       <button
-        className='workout-menu-button'
-        onClick={() => setIsWorkoutMenuOpen(true)}
-        aria-label='Workout options'
+        className='settings-menu-button'
+        onClick={() => setIsSettingsMenuOpen(true)}
+        aria-label='Settings options'
       >
         <span className='material-symbols-rounded'>more_vert</span>
       </button>

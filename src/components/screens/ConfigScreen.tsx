@@ -8,6 +8,7 @@ type Props = {
   onBegin: () => void;
   onBack: () => void;
   onGuide: () => void;
+  onOpenSettings: () => void;
 };
 
 export function ConfigScreen({
@@ -17,9 +18,18 @@ export function ConfigScreen({
   onBegin,
   onBack,
   onGuide,
+  onOpenSettings,
 }: Props) {
   return (
     <div style={{ maxWidth: 400, width: '90%' }}>
+      <button
+        className='settings-menu-button'
+        onClick={onOpenSettings}
+        aria-label='Settings'
+      >
+        <span className='material-symbols-rounded'>more_vert</span>
+      </button>
+
       <h2 style={{ margin: 0 }}>Workout Settings</h2>
 
       <p style={{ letterSpacing: '-0.025em' }}>

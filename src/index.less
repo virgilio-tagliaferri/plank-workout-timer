@@ -1,42 +1,56 @@
-@bg-app: #002637; // slate-900
-@text-primary: #e5e7eb; // gray-200
-
-@btn-bg: #00495a; // slate-800
-@btn-border: #226a7b; // slate-700
-@btn-hover: #267;
-
-@primary-green: #16a34a; // green-600
-@primary-green-hover: #22c55e;
-@primary-green-border: #15803d;
-
-@primary-gradient-start: rgba(17, 112, 88, 1);
-@primary-gradient-mid: rgba(22, 163, 74, 1);
-@primary-gradient-end: rgba(84, 196, 20, 1);
-
-@danger-bg: #7f1d1d;
-@danger-text: #fca5a5;
-@danger-text-alt: #fee2e2;
-@danger-focus: #660000;
-
-@accent-warning: #dd4;
-
 :root {
   color-scheme: dark;
-  --space: 16px;
 }
-
 * {
   box-sizing: border-box;
 }
+.theme-dark {
+  --bg-color: #002637;
+  --text-primary: #e5e7eb;
+  --accent-warning: #dd4;
+  --danger-bg: #7f1d1d;
+  --danger-text: #fca5a5;
 
+  --btn-bg: #00495a; // slate-800
+  --btn-border: #226a7b; // slate-700
+  --btn-hover: #267;
+
+  --primary-green: #16a34a; // green-600
+  --primary-green-hover: #22c55e;
+  --primary-green-border: #15803d;
+
+  --primary-gradient-start: rgba(17, 112, 88, 1);
+  --primary-gradient-mid: rgba(22, 163, 74, 1);
+  --primary-gradient-end: rgba(84, 196, 20, 1);
+}
+.theme-light {
+  --bg-color: #ddeeee;
+  --text-primary: #334455;
+  --accent-warning: #cb0;
+  --danger-bg: #711;
+  --danger-text: #faa;
+
+  --btn-bg: #267; // slate-800
+  --btn-border: #045; // slate-700
+  --btn-hover: #378;
+
+  --primary-green: #3c6; // green-600
+  --primary-green-hover: #4e7;
+  --primary-green-border: #3a5;
+
+  --primary-gradient-start: rgba(37, 132, 108, 1);
+  --primary-gradient-mid: rgba(42, 183, 94, 1);
+  --primary-gradient-end: rgba(104, 216, 40, 1);
+}
 body {
   margin: 0;
   font-family: 'Josefin Sans', system-ui, -apple-system, BlinkMacSystemFont,
     Roboto, sans-serif;
-  background-color: @bg-app;
-  color: @text-primary;
 }
-
+main {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
 p {
   line-height: 1.3em;
 }
@@ -44,14 +58,15 @@ p {
 .logo {
   margin: 0 0 0.25em;
   font-size: 1.75em;
-  background-color: @primary-green;
+  background-color: var(--primary-green);
   background: linear-gradient(
     45deg,
-    @btn-hover 30%,
-    @primary-gradient-end 100%
+    var(--btn-hover) 30%,
+    var(--primary-gradient-end) 100%
   );
   border-radius: 50%;
   padding: 1rem;
+  color: white;
   /*-webkit-background-clip: text;
   -webkit-text-fill-color: transparent;*/
 }
@@ -62,14 +77,6 @@ p {
   .exercise-image-wrapper {
     transition: filter 0.5s;
   }
-
-  /*&.workout-active {
-    animation: shine 2s ease-in-out infinite;
-    .exercise-image-wrapper img {
-      animation: pulse-active 3s ease-in-out infinite;
-    }
-  }*/
-
   &.workout-inactive {
     .exercise-image-wrapper {
       filter: saturate(0%);
@@ -133,18 +140,8 @@ h4 {
   }*/
 }
 
-.workout-menu-button {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  border: none;
-  line-height: 1;
-  color: white;
-  padding: 0.5rem;
-}
-.workout-menu-overlay {
-  background: @bg-app;
+.settings-menu-overlay {
+  background: var(--bg-color);
   position: absolute;
   inset: 0;
   z-index: 50;
@@ -166,7 +163,7 @@ h4 {
     }
   }
 }
-.workout-menu-content {
+.settings-menu-content {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -174,9 +171,8 @@ h4 {
   width: 100%;
   margin: auto;
   text-align: left;
-  color: white;
   align-items: center;
-  .workout-menu-image-wrapper {
+  .settings-menu-image-wrapper {
     height: 140px;
     width: 100%;
     overflow: hidden;
@@ -189,13 +185,12 @@ h4 {
       transform: scale(1.1);
     }
   }
-  .workout-menu-item {
+  .settings-menu-item {
     padding: 0 2rem;
     margin: auto;
     animation: fadeUp 0.2s ease-in;
-    h3 {
-      margin: 1em 0 0.5em 0;
-    }
+    width: 100%;
+    //h3 {margin: 1em 0 0.5em 0;}
     ul {
       padding-left: 10px;
       list-style-type: '- ';
@@ -204,20 +199,11 @@ h4 {
     }
   }
 }
-.workout-menu-list {
+.settings-menu-list {
   list-style-type: none;
   text-align: right;
   padding: 0;
   margin: 0;
-  /*li + li {
-    border-top: 1px solid rgba(@text-primary, 0.1);
-  }*/
-  button {
-    background: none;
-    border: none;
-    font-size: 1.25rem;
-    padding: 1rem 2rem;
-  }
 }
 
 .controlPanel {
@@ -226,12 +212,12 @@ h4 {
   justify-content: center;
 }
 
-button {
+button:not([type='checkbox']):not([type='radio']) {
   font-family: 'Josefin Sans', system-ui, -apple-system, BlinkMacSystemFont,
     Roboto, sans-serif;
-  background-color: @btn-bg;
-  color: @text-primary;
-  border: 1px solid @btn-border;
+  background-color: var(--btn-bg);
+  color: white;
+  border: 1px solid var(--btn-border);
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -240,67 +226,178 @@ button {
   align-items: center;
   justify-content: center;
   transition: background-color 150ms ease, transform 100ms ease;
-
   &:active:not(:disabled) {
     transform: scale(0.96);
   }
-
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
+  .settings-menu-list & {
+    background: none;
+    border: none;
+    font-size: 1.17rem;
+    padding: 1rem 2rem;
+    color: var(--text-primary);
+  }
+  &.start-button {
+    background-color: var(--primary-green);
+    background: linear-gradient(
+      45deg,
+      var(--primary-gradient-start) 0%,
+      var(--primary-gradient-mid) 50%,
+      var(--primary-gradient-end) 100%
+    );
+    border-color: var(--primary-green-border);
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+    &:hover {
+      background-color: var(--primary-green-hover);
+    }
+  }
+  &.pause-button {
+    height: 100px;
+    width: 100px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 1s;
+    z-index: 1;
+    position: relative;
+    transform: none;
+    transform: none;
+    span {
+      font-size: 50px;
+    }
+
+    &.is-resume {
+      color: var(--accent-warning);
+
+      span {
+        animation: pulse-pause 1s ease-in-out infinite;
+      }
+    }
+  }
+  &.abort-button {
+    background-color: transparent;
+    border-color: var(--danger-bg);
+    color: var(--danger-text);
+    z-index: 20; // sits above cancellation backdrop
+    &:hover {
+      background-color: var(--danger-bg);
+      color: var(--danger-text)-alt;
+    }
+    &:focus,
+    &:focus:not(:disabled) {
+      background-color: var(--danger-bg);
+    }
+  }
+  &.abort-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: default;
+    z-index: 10;
+  }
+  &.settings-menu-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    line-height: 1;
+    color: var(--text-primary);
+    padding: 0.5rem;
+  }
+  &.text-button {
+    background: none;
+    padding: 0;
+    border: none;
+    color: var(--text-primary);
+  }
+  &.toggle {
+    width: 44px;
+    height: 24px;
+    background: #666;
+    border-radius: 12px;
+    border: none;
+    position: relative;
+    cursor: pointer;
+    transition: background 200ms ease;
+
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 200ms ease;
+    }
+    &.on {
+      background: #4caf50;
+      .toggle-thumb {
+        transform: translateX(20px);
+      }
+    }
+  }
+  &.theme-toggle {
+    width: 56px;
+    height: 28px;
+    background: var(--text-primary);
+    border-radius: 14px;
+    border: none;
+    position: relative;
+    cursor: pointer;
+    .theme-toggle-thumb {
+      width: 24px;
+      height: 24px;
+      background: var(--bg-color);
+      color: var(--text-primary);
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 200ms ease;
+      .material-symbols-rounded {
+        font-size: 18px;
+      }
+    }
+    &.dark .theme-toggle-thumb {
+      transform: translateX(0);
+    }
+    &.light .theme-toggle-thumb {
+      transform: translateX(28px);
+    }
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  button:hover:not(:disabled) {
-    background-color: @btn-hover;
+  button:not([type='checkbox']):not([type='radio']) {
+    &:hover:not(:disabled) {
+      background-color: var(--btn-hover);
+    }
   }
 }
 
-.start-button {
-  background-color: @primary-green;
-  background: linear-gradient(
-    45deg,
-    @primary-gradient-start 0%,
-    @primary-gradient-mid 50%,
-    @primary-gradient-end 100%
-  );
-  border-color: @primary-green-border;
-  font-size: 1.3rem;
-  font-weight: 600;
-  display: inline-flex;
+.settings-toggle {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 1.2rem;
-
-  &:hover {
-    background-color: @primary-green-hover;
-  }
-}
-
-.abort-button {
-  background-color: transparent;
-  border-color: @danger-bg;
-  color: @danger-text;
-  z-index: 20; // sits above cancellation backdrop
-  &:hover {
-    background-color: @danger-bg;
-    color: @danger-text-alt;
-  }
-  &:focus,
-  &:focus:not(:disabled) {
-    background-color: @danger-focus;
-  }
-}
-.abort-backdrop {
-  position: fixed;
-  inset: 0;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  cursor: default;
-  z-index: 10;
+  justify-content: space-between;
+  margin: 16px 0;
+  gap: 12px;
 }
 
 .pause-ring {
@@ -320,7 +417,7 @@ button {
   transform-origin: 50% 50%;
   transform: rotate(-90deg);
   circle {
-    stroke: @primary-green;
+    stroke: var(--primary-green);
     transition: stroke-dashoffset 1s linear;
     stroke-linecap: round;
   }
@@ -331,7 +428,7 @@ button {
     stroke: white;
   }
   &.is-paused circle {
-    stroke: @accent-warning;
+    stroke: var(--accent-warning);
     animation: pulse-pause 1s ease-in-out infinite;
   }
   &.is-rest {
@@ -339,40 +436,9 @@ button {
   }
 }
 
-.pause-button {
-  height: 100px;
-  width: 100px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 1s;
-  z-index: 1;
-  position: relative;
-  transform: none;
-  transform: none;
-  span {
-    font-size: 50px;
-  }
-
-  &.is-resume {
-    color: @accent-warning;
-
-    span {
-      animation: pulse-pause 1s ease-in-out infinite;
-    }
-  }
-}
-
-.text-button {
-  background: none;
-  padding: 0;
-  border: none;
-}
-
 .timer {
   font-size: 48px;
-  margin: var(--space) 0;
+  margin: 16px 0;
   transition: color 1s;
   line-height: 1em;
   &.ending {
@@ -380,7 +446,7 @@ button {
   }
   &.paused {
     animation: pulse-pause 1s ease-in-out infinite;
-    color: @accent-warning;
+    color: var(--accent-warning);
   }
 }
 
@@ -393,8 +459,8 @@ button {
   pointer-events: none;
   font-size: 2rem;
   font-weight: 500;
-  background-color: rgba(@btn-bg, 0.75);
-  color: @text-primary;
+  background-color: rgba(var(--btn-bg), 0.75);
+  color: var(--text-primary);
   opacity: 0; // HIDDEN BY DEFAULT
   transition: all 0.5s;
   backdrop-filter: blur(2px);
@@ -413,7 +479,7 @@ button {
   z-index: 1;
   position: absolute;
   inset: 0;
-  background: @btn-bg;
+  background: var(--btn-bg);
   transform: scaleX(0);
   transform-origin: left;
 }
@@ -460,8 +526,7 @@ button {
 }
 
 .guide-modal {
-  background: @bg-app; // near-slate-950
-  color: #e5e7eb;
+  background: var(--bg-color); // near-slate-950
   width: 100%;
   max-width: 420px;
   max-height: 100vh;
@@ -477,12 +542,12 @@ button {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: @bg-app;
+  background: var(--bg-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 0 1rem;
-  box-shadow: 0 0 10px @bg-app;
+  box-shadow: 0 0 10px var(--bg-color);
   .text-button {
     margin-top: 2rem;
   }
@@ -504,7 +569,7 @@ button {
   /*&:before {
     content: '';
     height: 3rem;
-    background: linear-gradient(@bg-app 0%, rgba(@bg-app, 0) 100%);
+    background: linear-gradient(var(--bg-color) 0%, rgba(var(--bg-color), 0) 100%);
     width: 100%;
     position: absolute;
     top: 0;
@@ -515,8 +580,8 @@ button {
     height: 30px;
     background: linear-gradient(
       180deg,
-      rgba(@bg-app, 0) 0%,
-      rgba(@bg-app, 0.75) 100%
+      rgba(var(--bg-color), 0) 0%,
+      rgba(var(--bg-color), 0.75) 100%
     );
     width: 100%;
     position: fixed;
@@ -556,18 +621,6 @@ button {
     margin: 0;
     list-style-type: '- ';
     line-height: 1.3em;
-  }
-}
-
-@keyframes shine {
-  0% {
-    background: @bg-app;
-  }
-  50% {
-    background: lighten(@bg-app, 3%);
-  }
-  100% {
-    background: @bg-app;
   }
 }
 /*@keyframes pulse-active {

@@ -16,7 +16,7 @@ export function IdleScreen({ onStart }: Props) {
       </p>
 
       <button className='start-button' onClick={onStart}>
-        Set up workout
+        Get started
       </button>
     </>
   );
